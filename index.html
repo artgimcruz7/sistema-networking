@@ -793,6 +793,7 @@
       <input class="form-input" id="cfgAppId" placeholder="appId" />
     </div>
     <button class="btn-primary" onclick="saveFirebaseConfig()">Salvar e continuar →</button>
+    <button onclick="resetConfig()" style="background:transparent;border:none;color:var(--text3);font-size:12px;cursor:pointer;margin-top:4px;">Limpar configuração salva</button>
     <p class="config-link">Precisa de ajuda? 
       <a href="https://firebase.google.com/docs/web/setup" target="_blank">Ver documentação Firebase</a>
     </p>
@@ -937,6 +938,12 @@
 
   const cfg = getConfig();
 
+  window.resetConfig = function() {
+    localStorage.removeItem('nexus_firebase_config');
+    localStorage.removeItem('nexus_email_for_signin');
+    location.reload();
+  };
+
   if (!cfg) {
     document.getElementById('configScreen').style.display = 'flex';
     document.getElementById('authScreen').style.display = 'none';
@@ -947,8 +954,11 @@
       const appId     = document.getElementById('cfgAppId').value.trim();
       if (!apiKey || !projectId || !appId) { alert('Preencha todos os campos.'); return; }
       localStorage.setItem('nexus_firebase_config', JSON.stringify({
-        apiKey, authDomain: projectId+'.firebaseapp.com', projectId,
-        storageBucket: projectId+'.appspot.com', appId
+        apiKey,
+        authDomain: projectId + '.firebaseapp.com',
+        projectId,
+        storageBucket: projectId + '.appspot.com',
+        appId
       }));
       location.reload();
     };
@@ -968,27 +978,22 @@
     // ── CHECK IF RETURNING FROM EMAIL LINK ──
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let email = localStorage.getItem('nexus_email_for_signin');
-      if (!email) email = window.prompt('Confirme seu email para entrar:');
+      if (!email) email = window.prompt('Digite seu email para confirmar o login:');
       if (email) {
-        document.getElementById('configScreen').style.display = 'none';
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('appScreen').style.display = 'none';
-        document.body.innerHTML += '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0b0b0e;font-family:Syne,sans-serif;font-size:18px;color:#c9f14e;">Entrando...</div>';
         signInWithEmailLink(auth, email, window.location.href)
           .then(() => {
             localStorage.removeItem('nexus_email_for_signin');
             window.history.replaceState({}, document.title, APP_URL);
+            // onAuthStateChanged will show the app
           })
           .catch(e => {
             console.error(e);
-            alert('Link inválido ou expirado. Tente novamente.');
-            location.replace(APP_URL);
+            alert('Link inválido ou expirado. Solicite um novo link.');
+            window.history.replaceState({}, document.title, APP_URL);
           });
+      } else {
+        window.history.replaceState({}, document.title, APP_URL);
       }
-    } else {
-      document.getElementById('configScreen').style.display = 'none';
-      document.getElementById('authScreen').style.display = 'none';
-      document.getElementById('appScreen').style.display = 'none';
     }
 
     // ── AUTH STATE ──
