@@ -916,18 +916,13 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut as fbSignOut, onAuthStateChanged }
+  import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut as fbSignOut, onAuthStateChanged }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getFirestore, collection, addDoc, setDoc, deleteDoc, doc, onSnapshot, query, orderBy }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-  // ── CONFIG ──────────────────────────────────────────────────────────────
-  // Lê configuração salva ou usa placeholder
   function getConfig() {
-    try {
-      const s = localStorage.getItem('nexus_firebase_config');
-      if (s) return JSON.parse(s);
-    } catch(e) {}
+    try { const s = localStorage.getItem('nexus_firebase_config'); if (s) return JSON.parse(s); } catch(e) {}
     return null;
   }
 
@@ -940,342 +935,333 @@
       const projectId = document.getElementById('cfgProjectId').value.trim();
       const appId     = document.getElementById('cfgAppId').value.trim();
       if (!apiKey || !projectId || !appId) { alert('Preencha todos os campos.'); return; }
-      const config = {
-        apiKey,
-        authDomain: `${projectId}.firebaseapp.com`,
-        projectId,
-        storageBucket: `${projectId}.appspot.com`,
-        appId
-      };
-      localStorage.setItem('nexus_firebase_config', JSON.stringify(config));
+      localStorage.setItem('nexus_firebase_config', JSON.stringify({
+        apiKey, authDomain: projectId+'.firebaseapp.com', projectId,
+        storageBucket: projectId+'.appspot.com', appId
+      }));
       location.reload();
     };
-    // stubs
     window.signInGoogle = window.signOut = window.openModal = window.closeModal =
     window.saveContact = window.render = window.selectTag = window.handleBackdropClick =
-    window.handlePhotoChange = window.syncLetter = () => {};
+    window.handlePhotoChange = window.syncLetter = window.editContact = window.deleteContact = () => {};
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('appScreen').style.display = 'none';
-    throw new Error('firebase_not_configured');
-  }
+  } else {
 
-  // ── INIT ─────────────────────────────────────────────────────────────────
-  const app  = initializeApp(cfg);
-  const auth = getAuth(app);
-  const db   = getFirestore(app);
-  const provider = new GoogleAuthProvider();
+    const app  = initializeApp(cfg);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
 
-  let contacts = [];
-  let activeTag = 'all';
-  let editId = null;
-  let photoData = null;
-  let unsubscribe = null;
+    let contacts = [], activeTag = 'all', editId = null, photoData = null, unsubscribe = null;
 
-  // ── AUTH ─────────────────────────────────────────────────────────────────
-  // handle redirect result on return from Google (mobile flow)
-  getRedirectResult(auth).catch(e => console.error(e));
-
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  window.signInGoogle = async () => {
-    try {
-      if (isMobile) {
-        await signInWithRedirect(auth, provider);
-      } else {
-        await signInWithPopup(auth, provider);
-      }
-    } catch(e) { console.error(e); }
-  };
-
-  window.signOut = async () => {
-    if (!confirm('Sair da sua conta?')) return;
-    if (unsubscribe) unsubscribe();
-    await fbSignOut(auth);
-  };
-
-  onAuthStateChanged(auth, user => {
-    if (user) {
+    // ── MOSTRAR TELA DE LOADING ──
+    function showLoading() {
+      document.getElementById('configScreen').style.display = 'none';
       document.getElementById('authScreen').style.display = 'none';
-      document.getElementById('appScreen').style.display  = 'flex';
-      // avatar
-      const av = document.getElementById('userAvatar');
-      if (user.photoURL) av.innerHTML = `<img src="${user.photoURL}" alt="" />`;
-      // realtime listener
-      if (unsubscribe) unsubscribe();
-      const q = query(collection(db, 'users', user.uid, 'contacts'), orderBy('createdAt', 'desc'));
-      unsubscribe = onSnapshot(q, snap => {
-        contacts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        render();
-        renderTags();
-      });
-    } else {
+      document.getElementById('appScreen').style.display = 'none';
+    }
+    showLoading();
+
+    // ── PROCESSAR REDIRECT E DEPOIS ESCUTAR AUTH ──
+    getRedirectResult(auth).then(result => {
+      // se veio de redirect, o onAuthStateChanged vai pegar automaticamente
+    }).catch(e => {
+      console.error('redirect error', e);
+      // mostra tela de login em caso de erro
       document.getElementById('authScreen').style.display = 'flex';
-      document.getElementById('appScreen').style.display  = 'none';
-      contacts = [];
-    }
-  });
-
-  // ── HELPERS ──────────────────────────────────────────────────────────────
-  function uid() { return auth.currentUser?.uid; }
-
-  function hl(text, q) {
-    if (!text || !q) return text || '';
-    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return text.replace(new RegExp(`(${esc})`, 'gi'), '<mark>$1</mark>');
-  }
-
-  function waLink(phone) {
-    if (!phone) return null;
-    const n = phone.replace(/\D/g,'');
-    const num = n.startsWith('55') ? n : '55' + n;
-    return `https://wa.me/${num}`;
-  }
-
-  function initial(name) { return name?.trim()?.[0]?.toUpperCase() || '?'; }
-
-  function toast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2200);
-  }
-
-  // ── TAGS ─────────────────────────────────────────────────────────────────
-  function getAllTags() {
-    const s = new Set();
-    contacts.forEach(c => c.tag?.split(',').forEach(t => { const v=t.trim(); if(v) s.add(v); }));
-    return [...s];
-  }
-
-  function renderTags() {
-    const tags = getAllTags();
-    const row = document.getElementById('tagsRow');
-    row.innerHTML = `<button class="tag-btn ${activeTag==='all'?'active':''}" data-tag="all" onclick="selectTag('all',this)">Todos</button>`;
-    tags.forEach(t => {
-      row.innerHTML += `<button class="tag-btn ${activeTag===t?'active':''}" data-tag="${escapeHtml(t)}" onclick="selectTag('${escapeHtml(t).replace(/'/g,"\\'")}',this)">${escapeHtml(t)}</button>`;
-    });
-  }
-
-  window.selectTag = (tag, el) => {
-    activeTag = tag;
-    document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
-    el?.classList.add('active');
-    render();
-  };
-
-  function escapeHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  // ── RENDER ────────────────────────────────────────────────────────────────
-  window.render = () => {
-    const q = document.getElementById('searchInput')?.value.toLowerCase().trim() || '';
-    const filtered = contacts.filter(c => {
-      const tagMatch = activeTag === 'all' || c.tag?.toLowerCase().includes(activeTag.toLowerCase());
-      if (!tagMatch) return false;
-      if (!q) return true;
-      return [c.name, c.desc, c.tag, c.met, c.notes, c.phone].some(f => f?.toLowerCase().includes(q));
+    }).finally(() => {
+      // agora liga o listener de auth
+      startAuthListener();
     });
 
-    document.getElementById('countPill').textContent =
-      contacts.length + (contacts.length === 1 ? ' contato' : ' contatos');
-
-    const content = document.getElementById('content');
-
-    if (contacts.length === 0) {
-      content.innerHTML = `<div class="empty">
-        <div class="empty-ring">◈</div>
-        <h3>Network vazio por aqui</h3>
-        <p>Adicione seu primeiro contato tocando no + abaixo.</p>
-      </div>`;
-      return;
-    }
-
-    if (filtered.length === 0) {
-      content.innerHTML = `<div class="no-results">Nenhum resultado para essa busca.</div>`;
-      return;
-    }
-
-    const cards = filtered.map(c => {
-      const wa = waLink(c.phone);
-      const phoneField = c.phone ? `<div class="card-field">
-        <span class="field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.06 6.06l.94-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
-        <span class="field-text">${wa ? `<a href="${wa}">${hl(escapeHtml(c.phone), q)}</a>` : hl(escapeHtml(c.phone), q)}</span>
-      </div>` : '';
-
-      const metField = c.met ? `<div class="card-field">
-        <span class="field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-        <span class="field-text">${hl(escapeHtml(c.met), q)}</span>
-      </div>` : '';
-
-      const chips = c.tag ? c.tag.split(',').map(t => `<span class="chip">${escapeHtml(t.trim())}</span>`).join('') : '';
-      const notes = c.notes ? `<div class="card-notes">${hl(escapeHtml(c.notes), q)}</div>` : '';
-      const avatar = c.photo
-        ? `<img src="${c.photo}" alt="${escapeHtml(c.name)}" />`
-        : initial(c.name);
-
-      return `<div class="card">
-        <div class="card-header">
-          <div class="avatar">${c.photo ? `<img src="${c.photo}" alt="" />` : `<span>${initial(c.name)}</span>`}</div>
-          <div class="card-title-block">
-            <div class="card-name">${hl(escapeHtml(c.name), q)}</div>
-            <div class="card-desc">${hl(escapeHtml(c.desc || ''), q)}</div>
-          </div>
-        </div>
-        <div class="card-body">
-          ${phoneField}
-          ${metField}
-          ${chips ? `<div class="card-tags">${chips}</div>` : ''}
-          ${notes}
-        </div>
-        <div class="card-footer">
-          <button class="btn-icon" onclick="editContact('${c.id}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Editar
-          </button>
-          <button class="btn-icon del" onclick="deleteContact('${c.id}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-            Excluir
-          </button>
-        </div>
-      </div>`;
-    }).join('');
-
-    content.innerHTML = `<div class="results-info">${filtered.length} ${filtered.length===1?'contato':'contatos'}</div>
-    <div class="cards-list">${cards}</div>`;
-  };
-
-  // ── MODAL ─────────────────────────────────────────────────────────────────
-  window.openModal = (id) => {
-    editId = id || null;
-    photoData = null;
-    const fields = ['Name','Phone','Desc','Tag','Met','Notes'];
-    fields.forEach(f => { const el = document.getElementById('f'+f); if(el) el.value=''; });
-
-    if (editId) {
-      const c = contacts.find(x => x.id === editId);
-      if (c) {
-        document.getElementById('fName').value  = c.name  || '';
-        document.getElementById('fPhone').value = c.phone || '';
-        document.getElementById('fDesc').value  = c.desc  || '';
-        document.getElementById('fTag').value   = c.tag   || '';
-        document.getElementById('fMet').value   = c.met   || '';
-        document.getElementById('fNotes').value = c.notes || '';
-        if (c.photo) { photoData = c.photo; setThumb(c.photo, null); }
-        else setThumb(null, c.name);
-      }
-      document.getElementById('modalTitle').textContent = 'Editar contato';
-    } else {
-      document.getElementById('modalTitle').textContent = 'Novo contato';
-      setThumb(null, '');
-    }
-    document.getElementById('modalBackdrop').classList.add('open');
-    setTimeout(() => document.getElementById('fName').focus(), 300);
-  };
-
-  window.editContact = (id) => openModal(id);
-
-  window.closeModal = () => {
-    document.getElementById('modalBackdrop').classList.remove('open');
-    editId = null; photoData = null;
-  };
-
-  window.handleBackdropClick = (e) => {
-    if (e.target === document.getElementById('modalBackdrop')) closeModal();
-  };
-
-  function setThumb(src, name) {
-    const t = document.getElementById('photoThumb');
-    const l = document.getElementById('photoLetter');
-    if (src) {
-      t.innerHTML = `<img src="${src}" alt="" />`;
-    } else {
-      t.innerHTML = `<span id="photoLetter">${name ? initial(name) : '?'}</span>`;
-    }
-  }
-
-  window.syncLetter = () => {
-    if (photoData) return;
-    const name = document.getElementById('fName').value;
-    const span = document.getElementById('photoLetter');
-    if (span) span.textContent = name ? initial(name) : '?';
-  };
-
-  window.handlePhotoChange = (input) => {
-    const file = input.files[0];
-    if (!file) return;
-    // resize to max 400px to keep Firestore doc small
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = e => {
-      img.onload = () => {
-        const MAX = 400;
-        let w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h*MAX/w); w = MAX; }
-          else { w = Math.round(w*MAX/h); h = MAX; }
+    function startAuthListener() {
+      onAuthStateChanged(auth, user => {
+        if (user) {
+          document.getElementById('authScreen').style.display = 'none';
+          document.getElementById('appScreen').style.display  = 'flex';
+          const av = document.getElementById('userAvatar');
+          if (user.photoURL) av.innerHTML = `<img src="${user.photoURL}" alt="" />`;
+          if (unsubscribe) unsubscribe();
+          const q = query(collection(db, 'users', user.uid, 'contacts'), orderBy('createdAt', 'desc'));
+          unsubscribe = onSnapshot(q, snap => {
+            contacts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            render();
+            renderTags();
+          });
+        } else {
+          document.getElementById('authScreen').style.display = 'flex';
+          document.getElementById('appScreen').style.display  = 'none';
+          contacts = [];
         }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        photoData = canvas.toDataURL('image/jpeg', 0.75);
-        setThumb(photoData, null);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ── SAVE / DELETE ─────────────────────────────────────────────────────────
-  window.saveContact = async () => {
-    const name = document.getElementById('fName').value.trim();
-    if (!name) {
-      document.getElementById('fName').style.borderColor = 'rgba(255,82,82,0.5)';
-      document.getElementById('fName').focus();
-      return;
+      });
     }
-    document.getElementById('fName').style.borderColor = '';
-    const u = uid();
-    if (!u) return;
 
-    const data = {
-      name,
-      phone: document.getElementById('fPhone').value.trim(),
-      desc:  document.getElementById('fDesc').value.trim(),
-      tag:   document.getElementById('fTag').value.trim(),
-      met:   document.getElementById('fMet').value.trim(),
-      notes: document.getElementById('fNotes').value.trim(),
-      photo: photoData || null,
-      updatedAt: Date.now(),
-    };
-
-    try {
-      if (editId) {
-        await setDoc(doc(db, 'users', u, 'contacts', editId), data, { merge: true });
-        toast('Contato atualizado ✓');
-      } else {
-        data.createdAt = Date.now();
-        await addDoc(collection(db, 'users', u, 'contacts'), data);
-        toast('Contato salvo ✓');
+    window.signInGoogle = async () => {
+      try {
+        await signInWithRedirect(auth, provider);
+      } catch(e) {
+        console.error(e);
+        alert('Erro ao entrar. Tente novamente.');
       }
-      closeModal();
-    } catch(e) {
-      console.error(e);
-      toast('Erro ao salvar. Tente novamente.');
-    }
-  };
+    };
 
-  window.deleteContact = async (id) => {
-    if (!confirm('Excluir este contato?')) return;
-    const u = uid();
-    if (!u) return;
-    try {
-      await deleteDoc(doc(db, 'users', u, 'contacts', id));
-      toast('Contato excluído');
-    } catch(e) {
-      console.error(e);
+    window.signOut = async () => {
+      if (!confirm('Sair da sua conta?')) return;
+      if (unsubscribe) unsubscribe();
+      await fbSignOut(auth);
+    };
+
+    function uid() { return auth.currentUser?.uid; }
+
+    function hl(text, q) {
+      if (!text || !q) return text || '';
+      const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return text.replace(new RegExp(`(${esc})`, 'gi'), '<mark>$1</mark>');
     }
-  };
+
+    function waLink(phone) {
+      if (!phone) return null;
+      const n = phone.replace(/\D/g,'');
+      const num = n.startsWith('55') ? n : '55' + n;
+      return `https://wa.me/${num}`;
+    }
+
+    function initial(name) { return name?.trim()?.[0]?.toUpperCase() || '?'; }
+
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function getAllTags() {
+      const s = new Set();
+      contacts.forEach(c => c.tag?.split(',').forEach(t => { const v=t.trim(); if(v) s.add(v); }));
+      return [...s];
+    }
+
+    function renderTags() {
+      const tags = getAllTags();
+      const row = document.getElementById('tagsRow');
+      row.innerHTML = `<button class="tag-btn ${activeTag==='all'?'active':''}" data-tag="all" onclick="selectTag('all',this)">Todos</button>`;
+      tags.forEach(t => {
+        row.innerHTML += `<button class="tag-btn ${activeTag===t?'active':''}" data-tag="${escHtml(t)}" onclick="selectTag('${escHtml(t).replace(/'/g,"\\'")}',this)">${escHtml(t)}</button>`;
+      });
+    }
+
+    window.selectTag = (tag, el) => {
+      activeTag = tag;
+      document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+      el?.classList.add('active');
+      render();
+    };
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    window.render = () => {
+      const q = document.getElementById('searchInput')?.value.toLowerCase().trim() || '';
+      const filtered = contacts.filter(c => {
+        const tagMatch = activeTag === 'all' || c.tag?.toLowerCase().includes(activeTag.toLowerCase());
+        if (!tagMatch) return false;
+        if (!q) return true;
+        return [c.name, c.desc, c.tag, c.met, c.notes, c.phone].some(f => f?.toLowerCase().includes(q));
+      });
+
+      document.getElementById('countPill').textContent =
+        contacts.length + (contacts.length === 1 ? ' contato' : ' contatos');
+
+      const content = document.getElementById('content');
+
+      if (contacts.length === 0) {
+        content.innerHTML = `<div class="empty">
+          <div class="empty-ring">◈</div>
+          <h3>Network vazio por aqui</h3>
+          <p>Adicione seu primeiro contato tocando no + abaixo.</p>
+        </div>`;
+        return;
+      }
+
+      if (filtered.length === 0) {
+        content.innerHTML = `<div class="no-results">Nenhum resultado para essa busca.</div>`;
+        return;
+      }
+
+      const cards = filtered.map(c => {
+        const wa = waLink(c.phone);
+        const phoneField = c.phone ? `<div class="card-field">
+          <span class="field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.06 6.06l.94-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+          <span class="field-text">${wa ? `<a href="${wa}">${hl(escHtml(c.phone), q)}</a>` : hl(escHtml(c.phone), q)}</span>
+        </div>` : '';
+
+        const metField = c.met ? `<div class="card-field">
+          <span class="field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <span class="field-text">${hl(escHtml(c.met), q)}</span>
+        </div>` : '';
+
+        const chips = c.tag ? c.tag.split(',').map(t => `<span class="chip">${escHtml(t.trim())}</span>`).join('') : '';
+        const notes = c.notes ? `<div class="card-notes">${hl(escHtml(c.notes), q)}</div>` : '';
+
+        return `<div class="card">
+          <div class="card-header">
+            <div class="avatar">${c.photo ? `<img src="${c.photo}" alt="" />` : `<span>${initial(c.name)}</span>`}</div>
+            <div class="card-title-block">
+              <div class="card-name">${hl(escHtml(c.name), q)}</div>
+              <div class="card-desc">${hl(escHtml(c.desc || ''), q)}</div>
+            </div>
+          </div>
+          <div class="card-body">
+            ${phoneField}
+            ${metField}
+            ${chips ? `<div class="card-tags">${chips}</div>` : ''}
+            ${notes}
+          </div>
+          <div class="card-footer">
+            <button class="btn-icon" onclick="editContact('${c.id}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Editar
+            </button>
+            <button class="btn-icon del" onclick="deleteContact('${c.id}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              Excluir
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+
+      content.innerHTML = `<div class="results-info">${filtered.length} ${filtered.length===1?'contato':'contatos'}</div>
+      <div class="cards-list">${cards}</div>`;
+    };
+
+    window.openModal = (id) => {
+      editId = id || null;
+      photoData = null;
+      ['Name','Phone','Desc','Tag','Met','Notes'].forEach(f => {
+        const el = document.getElementById('f'+f); if(el) el.value='';
+      });
+      if (editId) {
+        const c = contacts.find(x => x.id === editId);
+        if (c) {
+          document.getElementById('fName').value  = c.name  || '';
+          document.getElementById('fPhone').value = c.phone || '';
+          document.getElementById('fDesc').value  = c.desc  || '';
+          document.getElementById('fTag').value   = c.tag   || '';
+          document.getElementById('fMet').value   = c.met   || '';
+          document.getElementById('fNotes').value = c.notes || '';
+          if (c.photo) { photoData = c.photo; setThumb(c.photo, null); }
+          else setThumb(null, c.name);
+        }
+        document.getElementById('modalTitle').textContent = 'Editar contato';
+      } else {
+        document.getElementById('modalTitle').textContent = 'Novo contato';
+        setThumb(null, '');
+      }
+      document.getElementById('modalBackdrop').classList.add('open');
+      setTimeout(() => document.getElementById('fName').focus(), 300);
+    };
+
+    window.editContact = (id) => openModal(id);
+
+    window.closeModal = () => {
+      document.getElementById('modalBackdrop').classList.remove('open');
+      editId = null; photoData = null;
+    };
+
+    window.handleBackdropClick = (e) => {
+      if (e.target === document.getElementById('modalBackdrop')) closeModal();
+    };
+
+    function setThumb(src, name) {
+      const t = document.getElementById('photoThumb');
+      if (src) {
+        t.innerHTML = `<img src="${src}" alt="" />`;
+      } else {
+        t.innerHTML = `<span id="photoLetter">${name ? initial(name) : '?'}</span>`;
+      }
+    }
+
+    window.syncLetter = () => {
+      if (photoData) return;
+      const name = document.getElementById('fName').value;
+      const span = document.getElementById('photoLetter');
+      if (span) span.textContent = name ? initial(name) : '?';
+    };
+
+    window.handlePhotoChange = (input) => {
+      const file = input.files[0];
+      if (!file) return;
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = e => {
+        img.onload = () => {
+          const MAX = 400;
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h*MAX/w); w = MAX; }
+            else { w = Math.round(w*MAX/h); h = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          photoData = canvas.toDataURL('image/jpeg', 0.75);
+          setThumb(photoData, null);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    window.saveContact = async () => {
+      const name = document.getElementById('fName').value.trim();
+      if (!name) {
+        document.getElementById('fName').style.borderColor = 'rgba(255,82,82,0.5)';
+        document.getElementById('fName').focus();
+        return;
+      }
+      document.getElementById('fName').style.borderColor = '';
+      const u = uid();
+      if (!u) return;
+      const data = {
+        name,
+        phone: document.getElementById('fPhone').value.trim(),
+        desc:  document.getElementById('fDesc').value.trim(),
+        tag:   document.getElementById('fTag').value.trim(),
+        met:   document.getElementById('fMet').value.trim(),
+        notes: document.getElementById('fNotes').value.trim(),
+        photo: photoData || null,
+        updatedAt: Date.now(),
+      };
+      try {
+        if (editId) {
+          await setDoc(doc(db, 'users', u, 'contacts', editId), data, { merge: true });
+          toast('Contato atualizado ✓');
+        } else {
+          data.createdAt = Date.now();
+          await addDoc(collection(db, 'users', u, 'contacts'), data);
+          toast('Contato salvo ✓');
+        }
+        closeModal();
+      } catch(e) {
+        console.error(e);
+        toast('Erro ao salvar. Tente novamente.');
+      }
+    };
+
+    window.deleteContact = async (id) => {
+      if (!confirm('Excluir este contato?')) return;
+      const u = uid();
+      if (!u) return;
+      try {
+        await deleteDoc(doc(db, 'users', u, 'contacts', id));
+        toast('Contato excluído');
+      } catch(e) { console.error(e); }
+    };
+
+  } // end if(cfg)
 </script>
 </body>
 </html>
