@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Nexus — Seu Network</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0b0b0e;
+      --bg2:      #111115;
+      --bg3:      #18181d;
+      --bg4:      #1e1e25;
+      --border:   rgba(255,255,255,0.06);
+      --border2:  rgba(255,255,255,0.11);
+      --border3:  rgba(255,255,255,0.18);
+      --accent:   #c9f14e;
+      --accent2:  #a8d43a;
+      --accent-dim: rgba(201,241,78,0.12);
+      --accent-dim2: rgba(201,241,78,0.06);
+      --text:     #edeae4;
+      --text2:    #928f88;
+      --text3:    #4e4c49;
+      --danger:   #ff5252;
+      --danger-dim: rgba(255,82,82,0.1);
+      --radius:   14px;
+      --radius-sm: 9px;
+      --radius-xs: 6px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── AUTH SCREEN ── */
+    #authScreen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      gap: 32px;
+    }
+
+    .auth-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+    }
+    .auth-logo span { color: var(--accent); }
+
+    .auth-card {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      padding: 36px 28px;
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      text-align: center;
+    }
+
+    .auth-card h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .auth-card p {
+      font-size: 14px;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+
+    .btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 14px 20px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.18s;
+      width: 100%;
+    }
+    .btn-google:hover {
+      border-color: var(--border3);
+      background: var(--bg4);
+    }
+    .btn-google svg { flex-shrink: 0; }
+
+    .auth-note {
+      font-size: 12px;
+      color: var(--text3);
+      line-height: 1.6;
+    }
+
+    /* ── APP SHELL ── */
+    #appScreen { display: none; flex-direction: column; min-height: 100vh; }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--bg);
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+    .logo span { color: var(--accent); }
+
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+    .count-pill {
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--accent-dim);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(201,241,78,0.2);
+      font-family: 'Syne', sans-serif;
+    }
+
+    .btn-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 1px solid var(--border2);
+      cursor: pointer;
+      background: var(--bg3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: var(--text2);
+      transition: border-color 0.15s;
+    }
+    .btn-avatar:hover { border-color: var(--border3); }
+    .btn-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .search-wrap { position: relative; }
+    .search-wrap input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 11px 14px 11px 40px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.18s;
+      -webkit-appearance: none;
+    }
+    .search-wrap input:focus { border-color: rgba(201,241,78,0.35); }
+    .search-wrap input::placeholder { color: var(--text3); }
+    .search-icon {
+      position: absolute;
+      left: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      opacity: 0.4;
+    }
+
+    .tags-row {
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .tags-row::-webkit-scrollbar { display: none; }
+
+    .tag-btn {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'DM Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tag-btn:hover, .tag-btn.active {
+      background: var(--accent-dim);
+      border-color: rgba(201,241,78,0.3);
+      color: var(--accent);
+    }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      z-index: 40;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #0b0b0e;
+      border: none;
+      font-size: 26px;
+      font-weight: 300;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(201,241,78,0.3);
+      transition: all 0.18s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fab:hover { background: var(--accent2); transform: scale(1.05); }
+    .fab:active { transform: scale(0.96); }
+
+    /* ── CONTENT ── */
+    .content {
+      padding: 20px;
+      flex: 1;
+      padding-bottom: 96px;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      text-align: center;
+      gap: 14px;
+    }
+    .empty-ring {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      opacity: 0.5;
+    }
+    .empty h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text2);
+    }
+    .empty p {
+      font-size: 13px;
+      color: var(--text3);
+      line-height: 1.7;
+      max-width: 240px;
+    }
+
+    /* ── RESULTS INFO ── */
+    .results-info {
+      font-size: 12px;
+      color: var(--text3);
+      margin-bottom: 14px;
+      padding-left: 2px;
+    }
+
+    /* ── CARDS ── */
+    .cards-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      transition: border-color 0.18s, transform 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .card:hover { border-color: var(--border2); }
+    .card:hover::after { opacity: 1; }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 13px;
+      flex-shrink: 0;
+      overflow: hidden;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .card-title-block { flex: 1; min-width: 0; }
+    .card-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 3px;
+      word-break: break-word;
+    }
+    .card-desc {
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .card-body { display: flex; flex-direction: column; gap: 9px; }
+
+    .card-field { display: flex; align-items: flex-start; gap: 9px; }
+    .field-icon {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .field-icon svg { width: 14px; height: 14px; opacity: 0.4; }
+    .field-text {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .field-text a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .field-text a:hover { text-decoration: underline; }
+
+    .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+    .chip {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: 20px;
+      background: var(--accent-dim2);
+      color: var(--accent);
+      border: 1px solid rgba(201,241,78,0.15);
+    }
+
+    .card-notes {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: var(--bg3);
+      border-radius: var(--radius-xs);
+      border-left: 2px solid rgba(201,241,78,0.25);
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.7;
+      word-break: break-word;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn-icon {
+      min-width: 40px;
+      height: 40px;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      padding: 0 12px;
+      gap: 6px;
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-icon svg { width: 14px; height: 14px; }
+    .btn-icon:hover { background: var(--bg3); color: var(--text); }
+    .btn-icon.del:hover { background: var(--danger-dim); color: var(--danger); border-color: rgba(255,82,82,0.25); }
+
+    mark {
+      background: rgba(201,241,78,0.2);
+      color: var(--accent);
+      border-radius: 3px;
+      padding: 0 1px;
+    }
+
+    /* ── MODAL ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 600px;
+      max-height: 92vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.34, 1.26, 0.64, 1);
+    }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+
+    .modal-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--border2);
+      border-radius: 2px;
+      margin: 14px auto 0;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .btn-close {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.15s;
+    }
+    .btn-close:hover { background: var(--bg3); }
+    .btn-close svg { width: 14px; height: 14px; }
+
+    .modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* photo upload */
+    .photo-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      background: var(--bg3);
+      border-radius: var(--radius-sm);
+      border: 1px dashed var(--border2);
+      cursor: pointer;
+      transition: border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .photo-row:hover { border-color: rgba(201,241,78,0.35); }
+    .photo-thumb {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-info p { font-size: 13px; font-weight: 500; color: var(--text); }
+    .photo-info small { font-size: 11px; color: var(--text3); }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text3);
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+    .form-input {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.18s;
+      width: 100%;
+      -webkit-appearance: none;
+    }
+    .form-input:focus { border-color: rgba(201,241,78,0.4); }
+    .form-input::placeholder { color: var(--text3); }
+    textarea.form-input {
+      resize: none;
+      min-height: 90px;
+      line-height: 1.6;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .modal-footer {
+      padding: 16px 20px 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+    }
+    .btn-cancel {
+      flex: 1;
+      padding: 13px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-cancel:hover { background: var(--bg3); color: var(--text); }
+    .btn-save {
+      flex: 2;
+      padding: 13px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent);
+      color: #0b0b0e;
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-save:hover { background: var(--accent2); }
+    .btn-save:active { transform: scale(0.98); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 96px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 10px 18px;
+      font-size: 13px;
+      color: var(--text);
+      opacity: 0;
+      transition: all 0.22s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 999;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── LOADING ── */
+    .loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      gap: 8px;
+    }
+    .loader-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .loader-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loader-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.15; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1); }
+    }
+
+    /* ── NO RESULTS ── */
+    .no-results {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text3);
+      font-size: 14px;
+    }
+
+    /* ── CONFIG SCREEN ── */
+    #configScreen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 32px 24px;
+      gap: 0;
+      text-align: center;
+    }
+    .config-card {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .config-card h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .config-card p {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.7;
+    }
+    .config-card code {
+      display: block;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--accent);
+      text-align: left;
+      line-height: 1.8;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .config-fields { display: flex; flex-direction: column; gap: 10px; }
+    .btn-primary {
+      background: var(--accent);
+      color: #0b0b0e;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      width: 100%;
+    }
+    .btn-primary:hover { background: var(--accent2); }
+    .config-link {
+      font-size: 12px;
+      color: var(--text3);
+    }
+    .config-link a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    @media (min-width: 600px) {
+      .modal { border-radius: 20px; margin: auto; }
+      .modal-backdrop { align-items: center; padding: 20px; }
+      .modal-handle { display: none; }
+      .cards-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- CONFIG SCREEN (shown when Firebase not configured) -->
+<div id="configScreen">
+  <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;letter-spacing:-1px;margin-bottom:28px;">
+    NEX<span style="color:var(--accent)">US</span>
+  </div>
+  <div class="config-card">
+    <h2>⚙️ Configure o Firebase</h2>
+    <p>Para usar o Nexus em qualquer aparelho com seus dados sincronizados, conecte um projeto Firebase gratuito.</p>
+    <p style="font-size:12px;color:var(--text3);">
+      1. Acesse <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent)">console.firebase.google.com</a><br>
+      2. Crie um projeto → adicione um app Web<br>
+      3. Vá em <strong style="color:var(--text)">Firestore Database</strong> → criar banco (modo teste)<br>
+      4. Vá em <strong style="color:var(--text)">Authentication</strong> → ativar Google<br>
+      5. Copie as credenciais abaixo e cole nos campos
+    </p>
+    <div class="config-fields">
+      <input class="form-input" id="cfgApiKey" placeholder="apiKey" />
+      <input class="form-input" id="cfgProjectId" placeholder="projectId" />
+      <input class="form-input" id="cfgAppId" placeholder="appId" />
+    </div>
+    <button class="btn-primary" onclick="saveFirebaseConfig()">Salvar e continuar →</button>
+    <p class="config-link">Precisa de ajuda? 
+      <a href="https://firebase.google.com/docs/web/setup" target="_blank">Ver documentação Firebase</a>
+    </p>
+  </div>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" style="display:none;">
+  <div class="auth-logo">NEX<span>US</span></div>
+  <div class="auth-card">
+    <h2>Seu network, organizado.</h2>
+    <p>Entre com o Google para acessar seus contatos em qualquer aparelho, sempre sincronizados.</p>
+    <button class="btn-google" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+      Entrar com Google
+    </button>
+    <p class="auth-note">Seus dados ficam privados e sincronizados na sua conta.</p>
+  </div>
+</div>
+
+<!-- APP SCREEN -->
+<div id="appScreen">
+  <header class="topbar">
+    <div class="logo">NEX<span>US</span></div>
+    <div class="topbar-right">
+      <span class="count-pill" id="countPill">0</span>
+      <div class="btn-avatar" id="userAvatar" onclick="signOut()" title="Sair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </span>
+      <input type="search" id="searchInput" placeholder="Buscar nome, empresa, tag..." oninput="render()" autocomplete="off" />
+    </div>
+    <div class="tags-row" id="tagsRow">
+      <button class="tag-btn active" data-tag="all" onclick="selectTag('all',this)">Todos</button>
+    </div>
+  </div>
+
+  <main class="content" id="content">
+    <div class="loader">
+      <div class="loader-dot"></div>
+      <div class="loader-dot"></div>
+      <div class="loader-dot"></div>
+    </div>
+  </main>
+
+  <button class="fab" onclick="openModal()" aria-label="Adicionar contato">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+</div>
+
+<!-- MODAL -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="handleBackdropClick(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Novo contato</span>
+      <button class="btn-close" onclick="closeModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="photo-row" onclick="document.getElementById('photoFile').click()">
+        <div class="photo-thumb" id="photoThumb"><span id="photoLetter">?</span></div>
+        <div class="photo-info">
+          <p>Foto do contato</p>
+          <small>Toque para selecionar (opcional)</small>
+        </div>
+        <input type="file" id="photoFile" accept="image/*" style="display:none" onchange="handlePhotoChange(this)" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Nome *</label>
+          <input class="form-input" id="fName" placeholder="Nome completo" oninput="syncLetter()" autocomplete="name" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Telefone / WhatsApp</label>
+        <input class="form-input" id="fPhone" type="tel" placeholder="(11) 98765-4321" autocomplete="tel" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Descrição</label>
+        <input class="form-input" id="fDesc" placeholder="Ex: Dev no SESI Santo André" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Categoria / Tag</label>
+          <input class="form-input" id="fTag" placeholder="Ex: Tech, Design" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Como se conheceram</label>
+          <input class="form-input" id="fMet" placeholder="Ex: Evento, LinkedIn" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Anotações</label>
+        <textarea class="form-input" id="fNotes" placeholder="Histórico, ideias, lembretes sobre essa pessoa..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveContact()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, collection, addDoc, setDoc, deleteDoc, doc, onSnapshot, query, orderBy }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  // ── CONFIG ──────────────────────────────────────────────────────────────
+  // Lê configuração salva ou usa placeholder
+  function getConfig() {
+    try {
+      const s = localStorage.getItem('nexus_firebase_config');
+      if (s) return JSON.parse(s);
+    } catch(e) {}
+    return null;
+  }
+
+  const cfg = getConfig();
+
+  if (!cfg) {
+    document.getElementById('configScreen').style.display = 'flex';
+    window.saveFirebaseConfig = function() {
+      const apiKey    = document.getElementById('cfgApiKey').value.trim();
+      const projectId = document.getElementById('cfgProjectId').value.trim();
+      const appId     = document.getElementById('cfgAppId').value.trim();
+      if (!apiKey || !projectId || !appId) { alert('Preencha todos os campos.'); return; }
+      const config = {
+        apiKey,
+        authDomain: `${projectId}.firebaseapp.com`,
+        projectId,
+        storageBucket: `${projectId}.appspot.com`,
+        appId
+      };
+      localStorage.setItem('nexus_firebase_config', JSON.stringify(config));
+      location.reload();
+    };
+    // stubs
+    window.signInGoogle = window.signOut = window.openModal = window.closeModal =
+    window.saveContact = window.render = window.selectTag = window.handleBackdropClick =
+    window.handlePhotoChange = window.syncLetter = () => {};
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'none';
+    throw new Error('firebase_not_configured');
+  }
+
+  // ── INIT ─────────────────────────────────────────────────────────────────
+  const app  = initializeApp(cfg);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  let contacts = [];
+  let activeTag = 'all';
+  let editId = null;
+  let photoData = null;
+  let unsubscribe = null;
+
+  // ── AUTH ─────────────────────────────────────────────────────────────────
+  window.signInGoogle = async () => {
+    try { await signInWithPopup(auth, provider); }
+    catch(e) { console.error(e); }
+  };
+
+  window.signOut = async () => {
+    if (!confirm('Sair da sua conta?')) return;
+    if (unsubscribe) unsubscribe();
+    await fbSignOut(auth);
+  };
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display  = 'flex';
+      // avatar
+      const av = document.getElementById('userAvatar');
+      if (user.photoURL) av.innerHTML = `<img src="${user.photoURL}" alt="" />`;
+      // realtime listener
+      if (unsubscribe) unsubscribe();
+      const q = query(collection(db, 'users', user.uid, 'contacts'), orderBy('createdAt', 'desc'));
+      unsubscribe = onSnapshot(q, snap => {
+        contacts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        render();
+        renderTags();
+      });
+    } else {
+      document.getElementById('authScreen').style.display = 'flex';
+      document.getElementById('appScreen').style.display  = 'none';
+      contacts = [];
+    }
+  });
+
+  // ── HELPERS ──────────────────────────────────────────────────────────────
+  function uid() { return auth.currentUser?.uid; }
+
+  function hl(text, q) {
+    if (!text || !q) return text || '';
+    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return text.replace(new RegExp(`(${esc})`, 'gi'), '<mark>$1</mark>');
+  }
+
+  function waLink(phone) {
+    if (!phone) return null;
+    const n = phone.replace(/\D/g,'');
+    const num = n.startsWith('55') ? n : '55' + n;
+    return `https://wa.me/${num}`;
+  }
+
+  function initial(name) { return name?.trim()?.[0]?.toUpperCase() || '?'; }
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ── TAGS ─────────────────────────────────────────────────────────────────
+  function getAllTags() {
+    const s = new Set();
+    contacts.forEach(c => c.tag?.split(',').forEach(t => { const v=t.trim(); if(v) s.add(v); }));
+    return [...s];
+  }
+
+  function renderTags() {
+    const tags = getAllTags();
+    const row = document.getElementById('tagsRow');
+    row.innerHTML = `<button class="tag-btn ${activeTag==='all'?'active':''}" data-tag="all" onclick="selectTag('all',this)">Todos</button>`;
+    tags.forEach(t => {
+      row.innerHTML += `<button class="tag-btn ${activeTag===t?'active':''}" data-tag="${escapeHtml(t)}" onclick="selectTag('${escapeHtml(t).replace(/'/g,"\\'")}',this)">${escapeHtml(t)}</button>`;
+    });
+  }
+
+  window.selectTag = (tag, el) => {
+    activeTag = tag;
+    document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+    el?.classList.add('active');
+    render();
+  };
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── RENDER ────────────────────────────────────────────────────────────────
+  window.render = () => {
+    const q = document.getElementById('searchInput')?.value.toLowerCase().trim() || '';
+    const filtered = contacts.filter(c => {
+      const tagMatch = activeTag === 'all' || c.tag?.toLowerCase().includes(activeTag.toLowerCase());
+      if (!tagMatch) return false;
+      if (!q) return true;
+      return [c.name, c.desc, c.tag, c.met, c.notes, c.phone].some(f => f?.toLowerCase().includes(q));
+    });
+
+    document.getElementById('countPill').textContent =
+      contacts.length + (contacts.length === 1 ? ' contato' : ' contatos');
+
+    const content = document.getElementById('content');
+
+    if (contacts.length === 0) {
+      content.innerHTML = `<div class="empty">
+        <div class="empty-ring">◈</div>
+        <h3>Network vazio por aqui</h3>
+        <p>Adicione seu primeiro contato tocando no + abaixo.</p>
+      </div>`;
+      return;
+    }
+
+    if (filtered.length === 0) {
+      content.innerHTML = `<div class="no-results">Nenhum resultado para essa busca.</div>`;
+      return;
+    }
+
+    const cards = filtered.map(c => {
+      const wa = waLink(c.phone);
+      const phoneField = c.phone ? `<div class="card-field">
+        <span class="field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.06 6.06l.94-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+        <span class="field-text">${wa ? `<a href="${wa}">${hl(escapeHtml(c.phone), q)}</a>` : hl(escapeHtml(c.phone), q)}</span>
+      </div>` : '';
+
+      const metField = c.met ? `<div class="card-field">
+        <span class="field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="field-text">${hl(escapeHtml(c.met), q)}</span>
+      </div>` : '';
+
+      const chips = c.tag ? c.tag.split(',').map(t => `<span class="chip">${escapeHtml(t.trim())}</span>`).join('') : '';
+      const notes = c.notes ? `<div class="card-notes">${hl(escapeHtml(c.notes), q)}</div>` : '';
+      const avatar = c.photo
+        ? `<img src="${c.photo}" alt="${escapeHtml(c.name)}" />`
+        : initial(c.name);
+
+      return `<div class="card">
+        <div class="card-header">
+          <div class="avatar">${c.photo ? `<img src="${c.photo}" alt="" />` : `<span>${initial(c.name)}</span>`}</div>
+          <div class="card-title-block">
+            <div class="card-name">${hl(escapeHtml(c.name), q)}</div>
+            <div class="card-desc">${hl(escapeHtml(c.desc || ''), q)}</div>
+          </div>
+        </div>
+        <div class="card-body">
+          ${phoneField}
+          ${metField}
+          ${chips ? `<div class="card-tags">${chips}</div>` : ''}
+          ${notes}
+        </div>
+        <div class="card-footer">
+          <button class="btn-icon" onclick="editContact('${c.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar
+          </button>
+          <button class="btn-icon del" onclick="deleteContact('${c.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            Excluir
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+
+    content.innerHTML = `<div class="results-info">${filtered.length} ${filtered.length===1?'contato':'contatos'}</div>
+    <div class="cards-list">${cards}</div>`;
+  };
+
+  // ── MODAL ─────────────────────────────────────────────────────────────────
+  window.openModal = (id) => {
+    editId = id || null;
+    photoData = null;
+    const fields = ['Name','Phone','Desc','Tag','Met','Notes'];
+    fields.forEach(f => { const el = document.getElementById('f'+f); if(el) el.value=''; });
+
+    if (editId) {
+      const c = contacts.find(x => x.id === editId);
+      if (c) {
+        document.getElementById('fName').value  = c.name  || '';
+        document.getElementById('fPhone').value = c.phone || '';
+        document.getElementById('fDesc').value  = c.desc  || '';
+        document.getElementById('fTag').value   = c.tag   || '';
+        document.getElementById('fMet').value   = c.met   || '';
+        document.getElementById('fNotes').value = c.notes || '';
+        if (c.photo) { photoData = c.photo; setThumb(c.photo, null); }
+        else setThumb(null, c.name);
+      }
+      document.getElementById('modalTitle').textContent = 'Editar contato';
+    } else {
+      document.getElementById('modalTitle').textContent = 'Novo contato';
+      setThumb(null, '');
+    }
+    document.getElementById('modalBackdrop').classList.add('open');
+    setTimeout(() => document.getElementById('fName').focus(), 300);
+  };
+
+  window.editContact = (id) => openModal(id);
+
+  window.closeModal = () => {
+    document.getElementById('modalBackdrop').classList.remove('open');
+    editId = null; photoData = null;
+  };
+
+  window.handleBackdropClick = (e) => {
+    if (e.target === document.getElementById('modalBackdrop')) closeModal();
+  };
+
+  function setThumb(src, name) {
+    const t = document.getElementById('photoThumb');
+    const l = document.getElementById('photoLetter');
+    if (src) {
+      t.innerHTML = `<img src="${src}" alt="" />`;
+    } else {
+      t.innerHTML = `<span id="photoLetter">${name ? initial(name) : '?'}</span>`;
+    }
+  }
+
+  window.syncLetter = () => {
+    if (photoData) return;
+    const name = document.getElementById('fName').value;
+    const span = document.getElementById('photoLetter');
+    if (span) span.textContent = name ? initial(name) : '?';
+  };
+
+  window.handlePhotoChange = (input) => {
+    const file = input.files[0];
+    if (!file) return;
+    // resize to max 400px to keep Firestore doc small
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = e => {
+      img.onload = () => {
+        const MAX = 400;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h*MAX/w); w = MAX; }
+          else { w = Math.round(w*MAX/h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        photoData = canvas.toDataURL('image/jpeg', 0.75);
+        setThumb(photoData, null);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ── SAVE / DELETE ─────────────────────────────────────────────────────────
+  window.saveContact = async () => {
+    const name = document.getElementById('fName').value.trim();
+    if (!name) {
+      document.getElementById('fName').style.borderColor = 'rgba(255,82,82,0.5)';
+      document.getElementById('fName').focus();
+      return;
+    }
+    document.getElementById('fName').style.borderColor = '';
+    const u = uid();
+    if (!u) return;
+
+    const data = {
+      name,
+      phone: document.getElementById('fPhone').value.trim(),
+      desc:  document.getElementById('fDesc').value.trim(),
+      tag:   document.getElementById('fTag').value.trim(),
+      met:   document.getElementById('fMet').value.trim(),
+      notes: document.getElementById('fNotes').value.trim(),
+      photo: photoData || null,
+      updatedAt: Date.now(),
+    };
+
+    try {
+      if (editId) {
+        await setDoc(doc(db, 'users', u, 'contacts', editId), data, { merge: true });
+        toast('Contato atualizado ✓');
+      } else {
+        data.createdAt = Date.now();
+        await addDoc(collection(db, 'users', u, 'contacts'), data);
+        toast('Contato salvo ✓');
+      }
+      closeModal();
+    } catch(e) {
+      console.error(e);
+      toast('Erro ao salvar. Tente novamente.');
+    }
+  };
+
+  window.deleteContact = async (id) => {
+    if (!confirm('Excluir este contato?')) return;
+    const u = uid();
+    if (!u) return;
+    try {
+      await deleteDoc(doc(db, 'users', u, 'contacts', id));
+      toast('Contato excluído');
+    } catch(e) {
+      console.error(e);
+    }
+  };
+</script>
+</body>
+</html>
