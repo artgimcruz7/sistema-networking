@@ -936,7 +936,7 @@
       const appId     = document.getElementById('cfgAppId').value.trim();
       if (!apiKey || !projectId || !appId) { alert('Preencha todos os campos.'); return; }
       localStorage.setItem('nexus_firebase_config', JSON.stringify({
-        apiKey, authDomain: projectId+'.firebaseapp.com', projectId,
+        apiKey, authDomain: 'artgimcruz7.github.io', projectId,
         storageBucket: projectId+'.appspot.com', appId
       }));
       location.reload();
